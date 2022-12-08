@@ -1,0 +1,108 @@
+globals[
+  platform_matching_technology_list
+  provider_contets_price_list
+  platform_subscription_fee_list
+  platform_genre_list
+  big_number
+  platform_shape_list
+
+;  list of variables in interface
+;  number_of_user
+;  number_of_platform
+;  number_of_genre
+;  number_of_platform_served_genre
+]
+
+breed [ users user ]
+
+users-own[
+  disutility_list
+  utility_list
+  sub_platform_list
+]
+
+to setup
+  clear-all
+  init-global-variables
+  init-users
+  reset-ticks
+end
+
+to go
+  calc-users-utility
+  calc-users-shape
+  tick
+end
+
+to init-global-variables
+;  init with constant value
+  set platform_matching_technology_list n-values number_of_platform [ 1.0 ]
+  set provider_contets_price_list       n-values number_of_genre    [ 0.5 ]
+  set platform_subscription_fee_list    n-values number_of_platform [ 0.5 ]
+
+;  init with random
+  set platform_genre_list               n-values number_of_platform [ random-n-genre number_of_platform_served_genre ]
+
+;  init with constant weight
+;  set platform_matching_technology_list ( list 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 )
+;  set provider_contets_price_list       ( list 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 )
+;  set platform_subscription_fee_list    ( list 0.1 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 )
+
+  set big_number 10000
+  set platform_shape_list [ "netflix" "watcha" "wavve" "tving" "kakao" ]
+end
+
+to init-users
+;  random location
+;  create-users number_of_user [
+;    setxy random-xcor random-ycor
+;    set disutility_list n-values number_of_platform [ random-float 1 ]
+;    set utility_list    n-values number_of_platform [ -1.0 ]
+;  ]
+
+;  lattice location
+  ask patches [
+    set pcolor white
+    sprout-users 1 [
+      set disutility_list   n-values number_of_platform [ random-float 1 ]
+      set utility_list      n-values number_of_platform [ -1.0 ]
+      set sub_platform_list n-values number_of_platform [ 0 ]
+      set heading 0
+      set color   0
+      set size    1.4
+    ]
+  ]
+end
+
+to-report random-n-genre [ number_of_served_genre ]
+  let genre_list  ( n-of number_of_served_genre ( range number_of_genre ) )
+  let result_list ( n-values number_of_genre [ 0 ] )
+  set result_list ( map [ x -> (replace-item x result_list 1) ]  genre_list )
+  set result_list ( reduce [ [list1 list2] -> (map + list1 list2) ]  result_list )
+  report result_list
+end
+
+to calc-users-utility
+  ;이후에 밖으로 꺼낼것
+  let temp_1_list n-values number_of_genre [ 1.0 ]
+  let contents_in_genre_list ( map - temp_1_list provider_contets_price_list )
+  set contents_in_genre_list ( map * contents_in_genre_list contents_in_genre_list )
+  set contents_in_genre_list ( n-values number_of_platform [ contents_in_genre_list ] )
+  let utility_platform_serving_list ( map [ [list1 list2] -> ( map * list1 list2 ) ] contents_in_genre_list platform_genre_list )
+  set utility_platform_serving_list ( map sum utility_platform_serving_list )
+  set utility_platform_serving_list ( map  *  utility_platform_serving_list platform_matching_technology_list )
+  set utility_platform_serving_list ( map  -  utility_platform_serving_list platform_subscription_fee_list )
+
+  ask users [
+    set utility_list ( map - utility_platform_serving_list disutility_list )
+    let temp_inf_list n-values number_of_platform [ big_number ]
+    let temp_util_list ( map / utility_list temp_inf_list )
+    set sub_platform_list ( map ceiling ( temp_util_list ) )
+  ]
+end
+
+to calc-users-shape
+  ask users [
+    set shape one-of platform_shape_list
+  ]
+end
